@@ -1,0 +1,11 @@
+ktor:
+    application:
+        modules:
+            - ru.nsu.dsi.md5.ApplicationKt.module
+        manager:
+            workers: "$WORKERS_COUNT:1"
+            worker:
+                host: "$WORKER_HOST:localhost"
+                port: "$WORKER_PORT:8081"
+    deployment:
+        port: 8080

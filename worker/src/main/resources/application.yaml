@@ -1,0 +1,10 @@
+ktor:
+    application:
+        modules:
+            - ru.nsu.dsi.md5.ApplicationKt.module
+        manager:
+            host: "$MANAGER_HOST:localhost"
+            port: "$MANAGER_PORT:8080"
+    deployment:
+        port: 8081
+

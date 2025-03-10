@@ -1,0 +1,32 @@
+version: '3'
+services:
+  manager:
+    container_name: manager
+    ports:
+      - "8080:8080"
+    image: md5crack-manager
+    build:
+      context: .
+      dockerfile: manager/Dockerfile
+    networks:
+      - md5crack-network
+    environment:
+      - WORKERS_COUNT=1
+      - WORKER_HOST=worker
+      - WORKER_PORT=8081
+
+  worker-0:
+    container_name: worker-0
+    image: md5crack-worker
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    networks:
+      - md5crack-network
+    environment:
+      - MANAGER_HOST=manager
+      - MANAGER_PORT=8080
+
+networks:
+  md5crack-network:
+    driver: bridge

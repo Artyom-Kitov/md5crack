@@ -1,0 +1,81 @@
+openapi: "3.0.3"
+info:
+  title: "MD5 hash crack API"
+  description: ""
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:8080"
+paths:
+  /api/hash/crack:
+    post:
+      summary: Start cracking an MD5 hash
+      description: Start cracking an MD5 hash
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrackRequest'
+        required: true
+      responses:
+        '200':
+          summary: OK
+          description: Started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrackResponse'
+        '400':
+          summary: Bad request
+          description: Invalid MD5 hash
+  /api/hash/status/{id}:
+    get:
+      summary: Get crack status
+      description: Get crack status
+      parameters:
+        - name: id
+          in: path
+          description: 'Request ID'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          summary: OK
+          description:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrackStatus'
+        '404':
+          summary: Not found
+          description: No request with given ID
+components:
+  schemas:
+    CrackRequest:
+      type: object
+      properties:
+        hash:
+          type: string
+          description: MD5 hash in HEX representation
+          example: e2fc714c4727ee9395f324cd2e7f331f
+        maxLen:
+          type: integer
+          format: int32
+          example: 4
+    CrackResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: request ID which can be used to retrieve cracking status
+    CrackStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          description: status
+        data:
+          type: array
+          description: resulting words that give that hash
+          items:
+            type: string
