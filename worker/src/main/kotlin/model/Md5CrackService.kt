@@ -15,6 +15,7 @@ class Md5CrackService(
     config: ApplicationConfig,
     private val log: Logger,
 ) {
+    private val workerId = config.property("ktor.application.worker-id").getString().toInt()
     private val managerHost = config.property("ktor.application.manager.host").getString()
     private val managerPort = config.property("ktor.application.manager.port").getString().toInt()
     private val url = "http://$managerHost:$managerPort/internal/api/manager/hash/crack/request"
@@ -40,7 +41,7 @@ class Md5CrackService(
             }.use { client ->
                 client.patch(url) {
                     contentType(ContentType.Application.Json)
-                    setBody(WorkerCrackResult(requestId, cracked))
+                    setBody(WorkerCrackResult(workerId, requestId, cracked))
                 }
             }
             log.info("Response from manager: {}", result)

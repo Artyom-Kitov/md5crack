@@ -1,0 +1,127 @@
+version: '3'
+services:
+  md5-mongo-primary:
+    container_name: md5-mongo-primary
+    image: mongo:8.0
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=md5crack
+      - MONGO_INITDB_ROOT_PASSWORD=goga123
+      - MONGO_INITDB_DATABASE=md5-mongo
+      - MONGODB_DB=md5-mongo
+      - MONGODB_USER=md5crack
+      - MONGODB_PASSWORD=goga123
+    ports:
+      - "27017:27017"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        chmod 400 /keys/mongodb-key
+        chown 999:999 /keys/mongodb-key
+        mongod --replSet rs0 --keyFile /keys/mongodb-key --bind_ip_all
+    healthcheck:
+      test: mongosh --eval "db.adminCommand('ping')"
+      interval: 5s
+      timeout: 30s
+      retries: 3
+    volumes:
+      - md5crack-data:/data/db
+      - ./mongodb-key:/keys/mongodb-key
+      - ./initdb.js:/docker-entrypoint-initdb.d/initdb.js
+    networks:
+      - md5crack-network
+
+  md5-mongo-secondary1:
+    container_name: md5-mongo-secondary1
+    image: mongo:8.0
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=md5crack
+      - MONGO_INITDB_ROOT_PASSWORD=goga123
+    ports:
+      - "27018:27017"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        chmod 400 /keys/mongodb-key
+        chown 999:999 /keys/mongodb-key
+        mongod --replSet rs0 --keyFile /keys/mongodb-key --bind_ip_all
+    volumes:
+      - md5crack-data-secondary1:/data/db
+      - ./mongodb-key:/keys/mongodb-key
+    networks:
+      - md5crack-network
+
+  md5-mongo-secondary2:
+    container_name: md5-mongo-secondary2
+    image: mongo:8.0
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=md5crack
+      - MONGO_INITDB_ROOT_PASSWORD=goga123
+    ports:
+      - "27019:27017"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        chmod 400 /keys/mongodb-key
+        chown 999:999 /keys/mongodb-key
+        mongod --replSet rs0 --keyFile /keys/mongodb-key --bind_ip_all
+    volumes:
+      - md5crack-data-secondary2:/data/db
+      - ./mongodb-key:/keys/mongodb-key
+    networks:
+      - md5crack-network
+
+  manager:
+    container_name: manager
+    ports:
+      - "8080:8080"
+    image: md5crack-manager
+    build:
+      context: .
+      dockerfile: manager/Dockerfile
+    networks:
+      - md5crack-network
+    environment:
+      - DB_URI=mongodb://md5crack:goga123@md5-mongo-primary:27017,md5-mongo-secondary1:27017,md5-mongo-secondary2:27017/md5-mongo?replicaSet=rs0&authSource=admin
+      - WORKERS_COUNT=2
+      - WORKER_HOST=worker
+      - WORKER_PORT=8081
+
+  worker-0:
+    container_name: worker-0
+    image: md5crack-worker
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    networks:
+      - md5crack-network
+    environment:
+      - WORKER_ID=0
+      - MANAGER_HOST=manager
+      - MANAGER_PORT=8080
+  worker-1:
+    container_name: worker-1
+    image: md5crack-worker
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    networks:
+      - md5crack-network
+    environment:
+      - WORKER_ID=1
+      - MANAGER_HOST=manager
+      - MANAGER_PORT=8080
+
+volumes:
+  md5crack-data:
+  md5crack-data-secondary1:
+  md5crack-data-secondary2:
+
+networks:
+  md5crack-network:
+    driver: bridge

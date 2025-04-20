@@ -23,18 +23,25 @@ repositories {
 
 dependencies {
     implementation(project(":contracts"))
+
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-swagger")
     implementation("io.ktor:ktor-server-openapi")
     implementation("io.ktor:ktor-server-netty")
     implementation("io.ktor:ktor-server-content-negotiation")
+    implementation("io.ktor:ktor-server-config-yaml")
+
     implementation("io.ktor:ktor-client-core")
     implementation("io.ktor:ktor-client-apache5")
     implementation("io.ktor:ktor-client-content-negotiation")
+
     implementation("io.ktor:ktor-serialization-kotlinx-json")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("io.ktor:ktor-server-config-yaml")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
+
+    implementation("org.litote.kmongo:kmongo:5.2.0")
+//    implementation("org.litote.kmongo:kmongo-coroutine:5.2.0")
+
+    implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

@@ -8,9 +8,11 @@ import io.ktor.server.routing.*
 import ru.nsu.dsi.md5.CrackRequest
 import ru.nsu.dsi.md5.WorkerCrackResult
 import ru.nsu.dsi.md5.model.HashCrackService
+import ru.nsu.dsi.md5.model.repository.CrackTaskRepositoryImpl
 
 fun Application.crackRouting() {
-    val hashCrackService = HashCrackService(environment.config, log)
+    val crackTaskRepository = CrackTaskRepositoryImpl(environment.config)
+    val hashCrackService = HashCrackService(environment.config, log, crackTaskRepository)
 
     routing {
         post("/api/hash/crack") {

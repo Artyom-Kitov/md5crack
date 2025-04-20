@@ -5,6 +5,7 @@ ktor:
         manager:
             host: "$MANAGER_HOST:localhost"
             port: "$MANAGER_PORT:8080"
+        worker-id: "$WORKER_ID:0"
     deployment:
         port: 8081
 

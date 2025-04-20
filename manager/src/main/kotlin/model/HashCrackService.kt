@@ -17,13 +17,16 @@ import ru.nsu.dsi.md5.CrackResponse
 import ru.nsu.dsi.md5.CrackStatus
 import ru.nsu.dsi.md5.WorkerCrackRequest
 import ru.nsu.dsi.md5.WorkerCrackResult
-import java.util.concurrent.ConcurrentHashMap
+import ru.nsu.dsi.md5.model.repository.CrackTask
+import ru.nsu.dsi.md5.model.repository.CrackTaskRepository
+import ru.nsu.dsi.md5.model.repository.TaskStatus
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class HashCrackService(
     config: ApplicationConfig,
     private val log: Logger,
+    private val crackTaskRepository: CrackTaskRepository,
 ) {
     private val workerHost = config.property("ktor.application.manager.worker.host").getString()
     private val workerPort = config.property("ktor.application.manager.worker.port").getString().toInt()
@@ -31,22 +34,19 @@ class HashCrackService(
 
     private val workers = config.property("ktor.application.manager.workers").getString().toInt()
 
-    private data class CrackEntry(
-        val data: MutableList<String>,
-        var counter: Int,
-    )
-
-    private val requests: MutableMap<String, CrackEntry> = ConcurrentHashMap<String, CrackEntry>()
-
     /**
      * @return null if internal error happened
      */
     @OptIn(ExperimentalUuidApi::class)
     fun startCrack(request: CrackRequest): CrackResponse? {
         val id = Uuid.random().toString()
-        requests[id] = CrackEntry(mutableListOf(), workers)
-        return try {
+        var task = CrackTask(id, mutableSetOf(), (0..<workers).toMutableSet(), TaskStatus.NEW)
+        return if (!crackTaskRepository.addTask(task)) {
+            null
+        } else try {
             log.info("Starting cracking hash = ${request.hash}")
+            task = task.copy(status = TaskStatus.IN_PROGRESS)
+            crackTaskRepository.updateById(id, task)
             HttpClient(Apache5) {
                 install(ContentNegotiation) {
                     json()
@@ -58,7 +58,7 @@ class HashCrackService(
             CrackResponse(id)
         } catch (e: Exception) {
             log.error(e)
-            requests.remove(id)
+            crackTaskRepository.removeById(id)
             null
         }
     }
@@ -90,21 +90,27 @@ class HashCrackService(
     /**
      * @return null if no request with such ID
      */
-    fun getCrackStatus(id: String) = synchronized(requests) {
-        val entry = requests[id] ?: return@synchronized null
-        val status = if (entry.counter != 0) "IN_PROGRESS" else "READY"
-        CrackStatus(
-            status = status,
-            data = if (entry.counter == 0) entry.data else null,
+    fun getCrackStatus(id: String): CrackStatus? {
+        val task = crackTaskRepository.findById(id) ?: return null
+        return CrackStatus(
+            status = task.status.toString(),
+            data = task.data.toList(),
         )
     }
 
     /**
      * @return null if not request with such ID
      */
-    fun addCracked(request: WorkerCrackResult) = synchronized(requests) {
-        val entry = requests[request.requestId] ?: return@synchronized null
-        entry.data.addAll(request.data)
-        entry.counter--
+    fun addCracked(request: WorkerCrackResult): Unit? {
+        log.info("Received crack result: ID = ${request.requestId}, worker = #${request.workerId}")
+        var task = crackTaskRepository.findById(request.requestId) ?: return null
+        task.data.addAll(request.data)
+        if (request.workerId in task.remaining) {
+            task.remaining.remove(request.workerId)
+            task = task.copy(status = TaskStatus.READY)
+            log.info("Request with ID = ${request.requestId} done successfully")
+        }
+        crackTaskRepository.updateById(task.id, task)
+        return Unit
     }
 }

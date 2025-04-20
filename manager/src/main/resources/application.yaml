@@ -7,5 +7,8 @@ ktor:
             worker:
                 host: "$WORKER_HOST:localhost"
                 port: "$WORKER_PORT:8081"
+        database:
+            connection: "$DB_URI:mongodb://md5crack:goga123@localhost:27027"
+            name: md5-mongo
     deployment:
         port: 8080
