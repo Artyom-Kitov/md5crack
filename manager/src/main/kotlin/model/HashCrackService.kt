@@ -1,20 +1,15 @@
 package ru.nsu.dsi.md5.model
 
-import io.ktor.client.*
-import io.ktor.client.engine.apache5.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import com.rabbitmq.client.AMQP
+import com.rabbitmq.client.Channel
 import io.ktor.server.config.*
 import io.ktor.util.logging.*
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import ru.nsu.dsi.md5.CrackRequest
 import ru.nsu.dsi.md5.CrackResponse
 import ru.nsu.dsi.md5.CrackStatus
+import ru.nsu.dsi.md5.REQUEST_EXCHANGE
+import ru.nsu.dsi.md5.REQUEST_KEY
 import ru.nsu.dsi.md5.WorkerCrackRequest
 import ru.nsu.dsi.md5.WorkerCrackResult
 import ru.nsu.dsi.md5.model.repository.CrackTask
@@ -28,63 +23,56 @@ class HashCrackService(
     private val log: Logger,
     private val crackTaskRepository: CrackTaskRepository,
 ) {
-    private val workerHost = config.property("ktor.application.manager.worker.host").getString()
-    private val workerPort = config.property("ktor.application.manager.worker.port").getString().toInt()
-    private val formatUrl = "http://$workerHost-%d:$workerPort/internal/api/worker/hash/crack/task"
-
     private val workers = config.property("ktor.application.manager.workers").getString().toInt()
+
+    private val channelProvider = ToWorkersChannelProvider(config)
 
     /**
      * @return null if internal error happened
      */
     @OptIn(ExperimentalUuidApi::class)
-    fun startCrack(request: CrackRequest): CrackResponse? {
+    fun startCrack(request: CrackRequest): CrackResponse {
         val id = Uuid.random().toString()
-        var task = CrackTask(id, mutableSetOf(), (0..<workers).toMutableSet(), TaskStatus.NEW)
-        return if (!crackTaskRepository.addTask(task)) {
-            null
-        } else try {
-            log.info("Starting cracking hash = ${request.hash}")
-            task = task.copy(status = TaskStatus.IN_PROGRESS)
-            crackTaskRepository.updateById(id, task)
-            HttpClient(Apache5) {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }.use { client ->
-                sendToWorkers(client, id, request)
+        var task = CrackTask(
+            id = id,
+            hash = request.hash,
+            maxLen = request.maxLen,
+            data = mutableSetOf(),
+            remaining = (0..<workers).toMutableSet(),
+            status = TaskStatus.NEW
+        )
+        crackTaskRepository.addTask(task)
+
+        return CrackResponse(id)
+    }
+
+    private fun sentCrackRequest(t: CrackTask) {
+        var task = t.copy()
+        try {
+            log.info("Starting cracking hash = ${task.hash}")
+            channelProvider.buildChannel().use { channel ->
+                sendToWorkers(channel, task.id, CrackRequest(task.hash, task.maxLen))
             }
-            log.info("Successfully started cracking hash = ${request.hash} by id = $id")
-            CrackResponse(id)
+            log.info("Successfully started cracking hash = ${task.hash} by id = ${task.id}")
+            task = task.copy(status = TaskStatus.IN_PROGRESS)
+            crackTaskRepository.updateById(task.id, task)
         } catch (e: Exception) {
             log.error(e)
-            crackTaskRepository.removeById(id)
-            null
         }
     }
 
-    private fun sendToWorkers(client: HttpClient, id: String, fromClient: CrackRequest) = runBlocking {
-        val tasks = mutableListOf<Job>()
-        for (worker in 0..<workers) {
-            val task = launch { sendToWorker(client, worker, id, fromClient) }
-            tasks.add(task)
+    private fun sendToWorkers(channel: Channel, id: String, fromClient: CrackRequest) {
+        for (part in 0..<workers) {
+            val request = WorkerCrackRequest(
+                requestId = id,
+                hash = fromClient.hash,
+                maxLen = fromClient.maxLen,
+                partNum = part,
+                partCount = workers,
+            )
+            val bytes = Json.encodeToString(request).encodeToByteArray()
+            channel.basicPublish(REQUEST_EXCHANGE, REQUEST_KEY, MESSAGE_PROPERTIES, bytes)
         }
-        tasks.joinAll()
-    }
-
-    private suspend fun sendToWorker(client: HttpClient, worker: Int, id: String, fromClient: CrackRequest) {
-        val request = WorkerCrackRequest(
-            requestId = id,
-            hash = fromClient.hash,
-            maxLen = fromClient.maxLen,
-            partNum = worker,
-            partCount = workers,
-        )
-        val response = client.post(String.format(formatUrl, worker)) {
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }
-        log.info("Worker #{} response: {}", worker, response)
     }
 
     /**
@@ -112,5 +100,15 @@ class HashCrackService(
         }
         crackTaskRepository.updateById(task.id, task)
         return Unit
+    }
+
+    fun retryPending() {
+        crackTaskRepository.findAllByStatus(TaskStatus.NEW).forEach(::sentCrackRequest)
+    }
+
+    companion object {
+        private val MESSAGE_PROPERTIES: AMQP.BasicProperties = AMQP.BasicProperties.Builder()
+            .deliveryMode(2)
+            .build()
     }
 }

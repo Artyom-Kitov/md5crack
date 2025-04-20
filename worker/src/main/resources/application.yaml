@@ -6,6 +6,8 @@ ktor:
             host: "$MANAGER_HOST:localhost"
             port: "$MANAGER_PORT:8080"
         worker-id: "$WORKER_ID:0"
+        rabbitmq:
+            uri: "$RABBIT_URI:amqp://md5crack:goga123@localhost:5672"
     deployment:
         port: 8081
 

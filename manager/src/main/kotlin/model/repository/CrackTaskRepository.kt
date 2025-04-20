@@ -8,4 +8,6 @@ interface CrackTaskRepository {
     fun updateById(id: String, newTask: CrackTask): Boolean
 
     fun removeById(id: String)
+
+    fun findAllByStatus(status: TaskStatus): List<CrackTask>
 }

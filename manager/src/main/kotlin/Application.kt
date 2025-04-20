@@ -1,10 +1,8 @@
 package ru.nsu.dsi.md5
 
-import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.routing.*
 import kotlinx.serialization.json.*
 import ru.nsu.dsi.md5.routing.crackRouting
 
@@ -17,5 +15,6 @@ fun Application.module() {
         json(Json { prettyPrint = true })
     }
     configureHTTP()
+    configureRabbitMq()
     crackRouting()
 }

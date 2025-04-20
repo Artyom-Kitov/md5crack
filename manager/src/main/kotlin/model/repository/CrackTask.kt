@@ -12,6 +12,8 @@ enum class TaskStatus {
 
 data class CrackTask @OptIn(ExperimentalUuidApi::class) constructor(
     @BsonId val id: String = Uuid.random().toString(),
+    val hash: String,
+    val maxLen: Int,
     val data: MutableSet<String>,
     val remaining: MutableSet<Int>,
     val status: TaskStatus,

@@ -39,7 +39,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
 
     implementation("org.litote.kmongo:kmongo:5.2.0")
-//    implementation("org.litote.kmongo:kmongo-coroutine:5.2.0")
+
+    implementation("io.github.damirdenis-tudor:ktor-server-rabbitmq:1.3.3")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-test-host")

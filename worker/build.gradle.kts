@@ -23,16 +23,22 @@ repositories {
 
 dependencies {
     implementation(project(":contracts"))
+
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("io.ktor:ktor-server-content-negotiation")
-    implementation("io.ktor:ktor-client-core")
-    implementation("io.ktor:ktor-client-apache5")
-    implementation("io.ktor:ktor-client-content-negotiation")
-    implementation("io.ktor:ktor-serialization-kotlinx-json")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
+
+    implementation("io.ktor:ktor-client-content-negotiation")
+
+    implementation("io.ktor:ktor-serialization-kotlinx-json")
+
+    implementation("io.github.damirdenis-tudor:ktor-server-rabbitmq:1.3.3")
+
+    implementation("ch.qos.logback:logback-classic:$logback_version")
+
     implementation("com.googlecode.combinatoricslib:combinatoricslib:2.3")
+
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

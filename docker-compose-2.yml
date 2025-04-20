@@ -1,5 +1,23 @@
 version: '3'
 services:
+  rabbitmq:
+    image: rabbitmq:3.10.7-management
+    hostname: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=md5crack
+      - RABBITMQ_DEFAULT_PASS=goga123
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    networks:
+      - md5crack-network
+
   md5-mongo-primary:
     container_name: md5-mongo-primary
     image: mongo:8.0
@@ -88,9 +106,8 @@ services:
       - md5crack-network
     environment:
       - DB_URI=mongodb://md5crack:goga123@md5-mongo-primary:27017,md5-mongo-secondary1:27017,md5-mongo-secondary2:27017/md5-mongo?replicaSet=rs0&authSource=admin
+      - RABBIT_URI=amqp://md5crack:goga123@rabbitmq:5672
       - WORKERS_COUNT=2
-      - WORKER_HOST=worker
-      - WORKER_PORT=8081
 
   worker-0:
     container_name: worker-0
@@ -102,8 +119,7 @@ services:
       - md5crack-network
     environment:
       - WORKER_ID=0
-      - MANAGER_HOST=manager
-      - MANAGER_PORT=8080
+      - RABBIT_URI=amqp://md5crack:goga123@rabbitmq:5672
   worker-1:
     container_name: worker-1
     image: md5crack-worker
@@ -114,8 +130,7 @@ services:
       - md5crack-network
     environment:
       - WORKER_ID=1
-      - MANAGER_HOST=manager
-      - MANAGER_PORT=8080
+      - RABBIT_URI=amqp://md5crack:goga123@rabbitmq:5672
 
 volumes:
   md5crack-data:

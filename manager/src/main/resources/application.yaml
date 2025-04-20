@@ -4,11 +4,10 @@ ktor:
             - ru.nsu.dsi.md5.ApplicationKt.module
         manager:
             workers: "$WORKERS_COUNT:1"
-            worker:
-                host: "$WORKER_HOST:localhost"
-                port: "$WORKER_PORT:8081"
         database:
             connection: "$DB_URI:mongodb://md5crack:goga123@localhost:27027"
             name: md5-mongo
+        rabbitmq:
+            uri: "$RABBIT_URI:amqp://md5crack:goga123@localhost:5672"
     deployment:
         port: 8080
