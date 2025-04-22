@@ -33,7 +33,7 @@ class HashCrackService(
     @OptIn(ExperimentalUuidApi::class)
     fun startCrack(request: CrackRequest): CrackResponse {
         val id = Uuid.random().toString()
-        var task = CrackTask(
+        val task = CrackTask(
             id = id,
             hash = request.hash,
             maxLen = request.maxLen,
@@ -42,16 +42,16 @@ class HashCrackService(
             status = TaskStatus.NEW
         )
         crackTaskRepository.addTask(task)
-
+        sendCrackRequest(task)
         return CrackResponse(id)
     }
 
-    private fun sentCrackRequest(t: CrackTask) {
+    private fun sendCrackRequest(t: CrackTask) {
         var task = t.copy()
         try {
             log.info("Starting cracking hash = ${task.hash}")
             channelProvider.buildChannel().use { channel ->
-                sendToWorkers(channel, task.id, CrackRequest(task.hash, task.maxLen))
+                sendToWorkers(channel, task.id, task.hash, task.maxLen)
             }
             log.info("Successfully started cracking hash = ${task.hash} by id = ${task.id}")
             task = task.copy(status = TaskStatus.IN_PROGRESS)
@@ -61,12 +61,12 @@ class HashCrackService(
         }
     }
 
-    private fun sendToWorkers(channel: Channel, id: String, fromClient: CrackRequest) {
+    private fun sendToWorkers(channel: Channel, id: String, hash: String, maxLen: Int) {
         for (part in 0..<workers) {
             val request = WorkerCrackRequest(
                 requestId = id,
-                hash = fromClient.hash,
-                maxLen = fromClient.maxLen,
+                hash = hash,
+                maxLen = maxLen,
                 partNum = part,
                 partCount = workers,
             )
@@ -103,7 +103,8 @@ class HashCrackService(
     }
 
     fun retryPending() {
-        crackTaskRepository.findAllByStatus(TaskStatus.NEW).forEach(::sentCrackRequest)
+        log.info("Retrying to send NEW tasks...")
+        crackTaskRepository.findAllByStatus(TaskStatus.NEW).forEach(::sendCrackRequest)
     }
 
     companion object {

@@ -108,6 +108,9 @@ services:
       - DB_URI=mongodb://md5crack:goga123@md5-mongo-primary:27017,md5-mongo-secondary1:27017,md5-mongo-secondary2:27017/md5-mongo?replicaSet=rs0&authSource=admin
       - RABBIT_URI=amqp://md5crack:goga123@rabbitmq:5672
       - WORKERS_COUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   worker-0:
     container_name: worker-0
@@ -120,6 +123,9 @@ services:
     environment:
       - WORKER_ID=0
       - RABBIT_URI=amqp://md5crack:goga123@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
   worker-1:
     container_name: worker-1
     image: md5crack-worker
@@ -131,6 +137,9 @@ services:
     environment:
       - WORKER_ID=1
       - RABBIT_URI=amqp://md5crack:goga123@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   md5crack-data:

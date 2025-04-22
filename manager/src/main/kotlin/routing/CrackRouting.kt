@@ -1,6 +1,8 @@
 package ru.nsu.dsi.md5.routing
 
 import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.basicConsume
+import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.exchangeDeclare
+import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.queueDeclare
 import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.rabbitmq
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -11,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.nsu.dsi.md5.CrackRequest
+import ru.nsu.dsi.md5.RESPONSE_OPTIONS
 import ru.nsu.dsi.md5.RESPONSE_QUEUE
 import ru.nsu.dsi.md5.WorkerCrackResult
 import ru.nsu.dsi.md5.model.HashCrackService
@@ -22,7 +25,7 @@ fun Application.crackRouting() {
     val retryIntervalMillis = 15000L
 
     launch {
-        while (isActive) {
+        while (true) {
             hashCrackService.retryPending()
             delay(retryIntervalMillis)
         }
@@ -50,6 +53,13 @@ fun Application.crackRouting() {
         }
     }
     rabbitmq {
+        queueDeclare {
+            queue = RESPONSE_QUEUE
+            durable = true
+            exclusive = false
+            autoDelete = false
+            arguments = RESPONSE_OPTIONS
+        }
         basicConsume {
             autoAck = true
             queue = RESPONSE_QUEUE

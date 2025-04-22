@@ -21,8 +21,15 @@ class ToManagerChannelProvider(
         val connection = connectionFactory.newConnection()
         val channel = connection.createChannel()
         channel.exchangeDeclare(RESPONSE_EXCHANGE, BuiltinExchangeType.DIRECT, true)
-        channel.queueDeclare(RESPONSE_QUEUE, true, false, false, mapOf())
+        channel.queueDeclare(RESPONSE_QUEUE, true, false, false, OPTIONS)
         channel.queueBind(RESPONSE_QUEUE, RESPONSE_EXCHANGE, RESPONSE_KEY)
         return channel
+    }
+
+    companion object {
+        private val OPTIONS = mapOf(
+            "x-consumer-timeout" to 60_000,
+            "x-dead-letter-exchange" to RESPONSE_EXCHANGE,
+        )
     }
 }

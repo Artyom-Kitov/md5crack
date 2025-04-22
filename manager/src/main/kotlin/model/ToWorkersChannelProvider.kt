@@ -21,8 +21,15 @@ class ToWorkersChannelProvider(
         val connection = connectionFactory.newConnection()
         val channel = connection.createChannel()
         channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.DIRECT, true)
-        channel.queueDeclare(REQUEST_QUEUE, true, false, false, mapOf())
+        channel.queueDeclare(REQUEST_QUEUE, true, false, false, OPTIONS)
         channel.queueBind(REQUEST_QUEUE, REQUEST_EXCHANGE, REQUEST_KEY)
         return channel
+    }
+
+    companion object {
+        val OPTIONS = mapOf(
+            "x-consumer-timeout" to 60_000,
+            "x-dead-letter-exchange" to REQUEST_EXCHANGE,
+        )
     }
 }

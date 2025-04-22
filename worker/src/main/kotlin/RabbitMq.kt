@@ -3,6 +3,7 @@ package ru.nsu.dsi.md5
 import io.github.damir.denis.tudor.ktor.server.rabbitmq.RabbitMQ
 import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.basicAck
 import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.basicConsume
+import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.queueDeclare
 import io.github.damir.denis.tudor.ktor.server.rabbitmq.dsl.rabbitmq
 import io.ktor.server.application.*
 import ru.nsu.dsi.md5.model.Md5CrackService
@@ -22,6 +23,13 @@ fun Application.configureRabbitMq() {
     val channelProvider = ToManagerChannelProvider(environment.config)
     val md5CrackService = Md5CrackService(environment.config, log, channelProvider)
     rabbitmq {
+        queueDeclare {
+            queue = REQUEST_QUEUE
+            durable = true
+            exclusive = false
+            autoDelete = false
+            arguments = REQUEST_OPTIONS
+        }
         basicConsume {
             autoAck = false
             queue = REQUEST_QUEUE
