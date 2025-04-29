@@ -4,6 +4,8 @@ import com.rabbitmq.client.AMQP
 import com.rabbitmq.client.Channel
 import io.ktor.server.config.*
 import io.ktor.util.logging.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import ru.nsu.dsi.md5.CrackRequest
 import ru.nsu.dsi.md5.CrackResponse
@@ -31,7 +33,7 @@ class HashCrackService(
      * @return null if internal error happened
      */
     @OptIn(ExperimentalUuidApi::class)
-    fun startCrack(request: CrackRequest): CrackResponse {
+    fun startCrack(request: CrackRequest) = runBlocking {
         val id = Uuid.random().toString()
         val task = CrackTask(
             id = id,
@@ -42,8 +44,10 @@ class HashCrackService(
             status = TaskStatus.NEW
         )
         crackTaskRepository.addTask(task)
-        sendCrackRequest(task)
-        return CrackResponse(id)
+        launch {
+            sendCrackRequest(task)
+        }
+        return@runBlocking CrackResponse(id)
     }
 
     private fun sendCrackRequest(t: CrackTask) {
